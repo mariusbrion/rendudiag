@@ -32,10 +32,9 @@
             overflow: hidden;
         }
 
-        /* --- Header & Form --- */
         header {
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            padding: 1.5rem;
+            padding: 1.2rem;
             color: white;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             z-index: 10;
@@ -45,9 +44,9 @@
             display: flex;
             gap: 10px;
             max-width: 900px;
-            margin: 1rem auto 0;
+            margin: 0.8rem auto 0;
             background: rgba(255, 255, 255, 0.2);
-            padding: 10px;
+            padding: 8px;
             border-radius: 12px;
             backdrop-filter: blur(10px);
         }
@@ -74,15 +73,13 @@
 
         button.btn-load:hover { background: #334155; transform: translateY(-1px); }
 
-        /* --- Main Layout --- */
         main {
             display: grid;
-            grid-template-columns: 450px 1fr;
+            grid-template-columns: 420px 1fr;
             flex: 1;
             overflow: hidden;
         }
 
-        /* --- Left Panel (Charts & Stats) --- */
         .side-panel {
             padding: 20px;
             background: var(--card-bg);
@@ -90,13 +87,13 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 15px;
         }
 
         .card {
             background: white;
             border-radius: 15px;
-            padding: 20px;
+            padding: 15px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             border: 1px solid #f1f5f9;
         }
@@ -104,7 +101,7 @@
         .controls {
             display: flex;
             gap: 8px;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .toggle-btn {
@@ -114,7 +111,7 @@
             border: 1px solid #e2e8f0;
             background: white;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 600;
             transition: 0.2s;
         }
@@ -133,40 +130,35 @@
 
         .bike-toggle.active { background: #22c55e; color: white; }
 
-        .chart-container { height: 280px; position: relative; }
+        .chart-container { height: 250px; position: relative; }
 
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 8px;
         }
 
         .stat-item {
             text-align: center;
-            padding: 15px;
+            padding: 12px;
             background: #f8fafc;
             border-radius: 10px;
         }
 
-        .stat-val { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
-        .stat-lab { font-size: 0.7rem; color: #64748b; text-transform: uppercase; }
-
-        /* --- Right Panel (Map) --- */
-        .map-wrapper {
-            position: relative;
-            background: #eee;
-        }
+        .stat-val { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+        .stat-lab { font-size: 0.65rem; color: #64748b; text-transform: uppercase; }
 
         #map-container {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-color: #f0f0f0;
         }
 
-        /* --- Loading Overlays --- */
         .loading-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.9);
             display: none;
             justify-content: center;
             align-items: center;
@@ -195,11 +187,11 @@
 
     <header>
         <div style="text-align:center;">
-            <h1 style="margin:0; font-size: 1.4rem;">📊 Analyseur de Mobilité Inter-Sites</h1>
+            <h1 style="margin:0; font-size: 1.3rem;">📊 Analyseur de Mobilité</h1>
         </div>
         <div class="search-bar">
-            <input type="text" id="input-site" placeholder="Nom de l'entreprise (ex: AXA)" />
-            <input type="text" id="input-city" placeholder="Ville (ex: Paris)" />
+            <input type="text" id="input-site" placeholder="Entreprise (ex: Monoprix)" />
+            <input type="text" id="input-city" placeholder="Ville (ex: Bordeaux)" />
             <button class="btn-load" onclick="App.initFetch()">Charger</button>
         </div>
     </header>
@@ -208,8 +200,8 @@
         <div class="side-panel">
             <div class="card">
                 <div class="controls">
-                    <button class="toggle-btn active" id="btn-dist" onclick="App.setMode('distance')">Distance</button>
-                    <button class="toggle-btn" id="btn-time" onclick="App.setMode('time')">Temps</button>
+                    <button class="toggle-btn active" id="btn-dist" onclick="App.setMode('distance')">Distance (km)</button>
+                    <button class="toggle-btn" id="btn-time" onclick="App.setMode('time')">Temps (min)</button>
                     <button class="toggle-btn bike-toggle" id="btn-bike" onclick="App.toggleBike()">Mode VAE</button>
                 </div>
                 <div class="chart-container">
@@ -218,33 +210,26 @@
             </div>
 
             <div class="card">
-                <div class="stats-grid" id="stats-grid">
-                    <!-- Rempli dynamiquement -->
-                </div>
+                <div class="stats-grid" id="stats-grid"></div>
             </div>
 
-            <div id="console-logs" style="font-size: 0.7rem; font-family: monospace; color: #94a3b8; padding: 10px; border-top: 1px solid #f1f5f9; max-height: 150px; overflow-y: auto;">
+            <div id="console-logs" style="font-size: 0.7rem; font-family: monospace; color: #64748b; padding: 10px; border-top: 1px solid #f1f5f9; max-height: 200px; overflow-y: auto; background: #fdfdfd; border-radius: 8px;">
                 > Prêt pour l'analyse...
             </div>
         </div>
 
-        <div class="map-wrapper">
-            <div id="map-container"></div>
-        </div>
+        <div id="map-container"></div>
     </main>
 
     <script>
-        /**
-         * CONFIGURATION
-         * Remplacez par l'URL de votre déploiement Google Apps Script (Web App)
-         */
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxgTYcx-62MBamAawDtt3IMgMAFCkudO49be8amsULPoeNkXiYLuh3dXK8zLd9u-hoyAA/exec";
+        // URL MISE À JOUR SELON VOTRE DERNIER MESSAGE
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxNrmW4mTLR6O1GUIdmxFkbA6iQ7h3aNxs2gdOrMPfbxleVQqi8Oslq9Disgk3h2ZnKyA/exec";
 
         const App = {
             state: {
-                mode: 'distance', // 'distance' or 'time'
+                mode: 'distance',
                 bikeEnabled: false,
-                rawData: [],      // Données CSV parsées
+                rawData: [],
                 mapLayers: { points: null, lines: null },
                 chart: null
             },
@@ -252,7 +237,7 @@
             log(msg, type = 'info') {
                 const logs = document.getElementById('console-logs');
                 const time = new Date().toLocaleTimeString();
-                logs.innerHTML += `<br>[${time}] ${msg}`;
+                logs.innerHTML += `<br><span style="color: ${type === 'error' ? '#ef4444' : '#64748b'}">[${time}] ${msg}</span>`;
                 logs.scrollTop = logs.scrollHeight;
                 console.log(`[${type.toUpperCase()}] ${msg}`);
             },
@@ -263,9 +248,6 @@
                 loader.style.display = show ? 'flex' : 'none';
             },
 
-            /**
-             * 1. RECUPERATION DES DONNEES
-             */
             async initFetch() {
                 const site = document.getElementById('input-site').value.trim();
                 const city = document.getElementById('input-city').value.trim();
@@ -275,13 +257,11 @@
                     return;
                 }
 
-                this.showLoader(true, "Interrogation de la base Sheets...");
+                this.showLoader(true, "Lecture de la base Sheets...");
                 this.log(`Recherche : ${site} à ${city}`);
 
                 try {
-                    // On appelle doGet via une requête GET standard
                     const fetchUrl = `${SCRIPT_URL}?site=${encodeURIComponent(site)}&city=${encodeURIComponent(city)}`;
-                    
                     const response = await fetch(fetchUrl);
                     const result = await response.json();
 
@@ -289,46 +269,56 @@
                         throw new Error(result.message || "Aucune donnée trouvée.");
                     }
 
-                    this.log("Données récupérées avec succès.");
+                    this.log("Données JSON reçues.");
                     this.processData(result.data);
 
                 } catch (err) {
-                    this.log(`Erreur: ${err.message}`, 'error');
-                    alert(`Erreur : ${err.message}`);
+                    this.log(`Erreur critique : ${err.message}`, 'error');
                 } finally {
                     this.showLoader(false);
                 }
             },
 
-            /**
-             * 2. TRAITEMENT ET DISPATCH
-             */
             processData(row) {
-                // row.field3 = Points GeoJSON, row.field4 = Lignes GeoJSON, row.field5 = CSV Analyse
-                this.log("Décodage des couches géographiques...");
-                try {
-                    this.state.mapLayers.points = typeof row.field3 === 'string' ? JSON.parse(row.field3) : row.field3;
-                    this.state.mapLayers.lines = typeof row.field4 === 'string' ? JSON.parse(row.field4) : row.field4;
-                } catch (e) {
-                    this.log("Erreur de parsing GeoJSON: " + e.message, "error");
+                if (!row) {
+                    this.log("Erreur : L'objet 'data' est vide.", "error");
+                    return;
                 }
 
-                this.log("Parsing du fichier CSV d'analyse...");
+                this.log("Décodage des couches géographiques...");
+                
+                const parseGeo = (input) => {
+                    try {
+                        let data = typeof input === 'string' ? JSON.parse(input) : input;
+                        // Si c'est un tableau de 1 élément (comme dans votre exemple), on extrait l'objet
+                        if (Array.isArray(data)) return data[0];
+                        return data;
+                    } catch (e) {
+                        this.log("Échec parsing JSON d'une colonne carto", "error");
+                        return null;
+                    }
+                };
+
+                this.state.mapLayers.points = parseGeo(row.field3);
+                this.state.mapLayers.lines = parseGeo(row.field4);
+
+                if (!this.state.mapLayers.points || !this.state.mapLayers.lines) {
+                    this.log("Attention : Certaines couches carto sont invalides.", "error");
+                }
+
+                this.log("Traitement du CSV d'analyse...");
                 Papa.parse(row.field5, {
                     header: true,
                     dynamicTyping: true,
                     skipEmptyLines: true,
                     complete: (results) => {
                         this.state.rawData = results.data;
-                        this.log(`${results.data.length} lignes analysées.`);
+                        this.log(`${results.data.length} lignes de données traitées.`);
                         this.renderAll();
                     }
                 });
             },
 
-            /**
-             * 3. RENDU GRAPHIQUE
-             */
             renderAll() {
                 this.updateChart();
                 this.renderMap();
@@ -348,8 +338,6 @@
             },
 
             updateChart() {
-                this.log(`Mise à jour graphique : ${this.state.mode} (Bike: ${this.state.bikeEnabled})`);
-                
                 const bins = this.state.mode === 'distance' 
                     ? { '0-2km': 0, '2-5km': 0, '5-10km': 0, '10km+': 0 }
                     : { '0-10m': 0, '10-15m': 0, '15-20m': 0, '20m+': 0 };
@@ -363,7 +351,7 @@
                         else bins['10km+']++;
                     } else {
                         let val = d.duration_minutes;
-                        if (this.state.bikeEnabled) val *= 0.75; // Réduction VAE
+                        if (this.state.bikeEnabled) val *= 0.75;
                         if (val <= 10) bins['0-10m']++;
                         else if (val <= 15) bins['10-15m']++;
                         else if (val <= 20) bins['15-20m']++;
@@ -374,7 +362,6 @@
                 const labels = Object.keys(bins);
                 const values = Object.values(bins);
 
-                // Update Stats Grid
                 const grid = document.getElementById('stats-grid');
                 grid.innerHTML = labels.map((l, i) => `
                     <div class="stat-item">
@@ -383,7 +370,6 @@
                     </div>
                 `).join('');
 
-                // Render Chart.js
                 const ctx = document.getElementById('mainChart').getContext('2d');
                 if (this.state.chart) this.state.chart.destroy();
                 
@@ -392,7 +378,6 @@
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Nombre d\'employés',
                             data: values,
                             backgroundColor: this.state.bikeEnabled ? '#22c55e' : '#4facfe',
                             borderRadius: 6
@@ -402,55 +387,50 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } }
+                        scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
                     }
                 });
             },
 
-            /**
-             * 4. RENDU CARTO DECK.GL
-             */
             renderMap() {
-                if (!this.state.mapLayers.lines || !this.state.mapLayers.points) return;
-                this.log("Rendu Deck.gl en cours...");
+                if (!this.state.mapLayers.lines) return;
+                this.log("Mise à jour de Deck.gl...");
 
                 const layers = [
+                    // FOND DE CARTE OSM VOYAGER (CORRECTION)
                     new deck.TileLayer({
                         id: 'base-tiles',
                         data: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                        minZoom: 0, maxZoom: 19,
+                        minZoom: 0,
+                        maxZoom: 19,
+                        tileSize: 256,
                         renderSubLayers: props => {
                             const { bbox: { west, south, east, north } } = props.tile;
                             return new deck.BitmapLayer(props, {
-                                data: null, image: props.data,
+                                data: null,
+                                image: props.data,
                                 bounds: [west, south, east, north]
                             });
                         }
                     }),
+                    // HEATMAP (Basée sur les points de départ du fichier heat)
                     new deck.HeatmapLayer({
                         id: 'heatmap',
-                        data: this.state.mapLayers.lines.features,
-                        getPosition: d => d.geometry.coordinates[0],
+                        data: this.state.mapLayers.points ? this.state.mapLayers.points.features : [],
+                        getPosition: d => d.geometry.coordinates,
                         getWeight: 1,
-                        radiusPixels: 40,
+                        radiusPixels: 45,
                         intensity: 1,
-                        threshold: 0.1
+                        threshold: 0.05
                     }),
+                    // ROUTES GEOJSON
                     new deck.GeoJsonLayer({
                         id: 'geojson-lines',
                         data: this.state.mapLayers.lines,
-                        stroked: false,
-                        filled: true,
+                        stroked: true,
                         lineWidthMinPixels: 2,
-                        getLineColor: [79, 172, 254, 150],
+                        getLineColor: [79, 172, 254, 180],
                         pickable: true
-                    }),
-                    new deck.GeoJsonLayer({
-                        id: 'geojson-points',
-                        data: this.state.mapLayers.points,
-                        getFillColor: [30, 41, 59],
-                        getPointRadius: 40,
-                        pointRadiusMinPixels: 4
                     })
                 ];
 
@@ -458,7 +438,7 @@
                     this.deckgl = new deck.DeckGL({
                         container: 'map-container',
                         initialViewState: {
-                            longitude: 2.3522, latitude: 48.8566,
+                            longitude: -0.57, latitude: 44.83, // Bordeaux par défaut
                             zoom: 11, pitch: 0, bearing: 0
                         },
                         controller: true,
@@ -468,13 +448,13 @@
                     this.deckgl.setProps({ layers: layers });
                 }
 
+                // Auto-center sur le premier point
                 if (this.state.mapLayers.points?.features?.length > 0) {
-                    const firstCoords = this.state.mapLayers.points.features[0].geometry.coordinates;
+                    const center = this.state.mapLayers.points.features[0].geometry.coordinates;
                     this.deckgl.setProps({
                         initialViewState: {
-                            longitude: firstCoords[0],
-                            latitude: firstCoords[1],
-                            zoom: 11, transitionDuration: 1000
+                            longitude: center[0], latitude: center[1],
+                            zoom: 11, transitionDuration: 800
                         }
                     });
                 }
