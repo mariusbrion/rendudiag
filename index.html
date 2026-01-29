@@ -34,7 +34,7 @@
 
         header {
             background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            padding: 1.2rem;
+            padding: 1rem 1.2rem;
             color: white;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             z-index: 10;
@@ -44,7 +44,7 @@
             display: flex;
             gap: 10px;
             max-width: 900px;
-            margin: 0.8rem auto 0;
+            margin: 0.5rem auto 0;
             background: rgba(255, 255, 255, 0.2);
             padding: 8px;
             border-radius: 12px;
@@ -148,11 +148,49 @@
         .stat-val { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
         .stat-lab { font-size: 0.65rem; color: #64748b; text-transform: uppercase; }
 
-        #map-container {
+        /* Map Controls Overlay */
+        .map-wrapper {
             position: relative;
             width: 100%;
             height: 100%;
+        }
+
+        #map-container {
+            width: 100%;
+            height: 100%;
             background-color: #f0f0f0;
+        }
+
+        .layer-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .layer-item input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
         }
 
         .loading-overlay {
@@ -182,16 +220,16 @@
 
     <div class="loading-overlay" id="global-loader">
         <div class="spinner"></div>
-        <div id="loader-msg">Recherche des données...</div>
+        <div id="loader-msg">Chargement...</div>
     </div>
 
     <header>
         <div style="text-align:center;">
-            <h1 style="margin:0; font-size: 1.3rem;">📊 Analyseur de Mobilité</h1>
+            <h1 style="margin:0; font-size: 1.2rem;">📊 Analyseur de Mobilité</h1>
         </div>
         <div class="search-bar">
-            <input type="text" id="input-site" placeholder="Entreprise (ex: Monoprix)" />
-            <input type="text" id="input-city" placeholder="Ville (ex: Bordeaux)" />
+            <input type="text" id="input-site" placeholder="Entreprise (Ex: Monoprix)" />
+            <input type="text" id="input-city" placeholder="Ville (Ex: Bordeaux)" />
             <button class="btn-load" onclick="App.initFetch()">Charger</button>
         </div>
     </header>
@@ -200,9 +238,9 @@
         <div class="side-panel">
             <div class="card">
                 <div class="controls">
-                    <button class="toggle-btn active" id="btn-dist" onclick="App.setMode('distance')">Distance (km)</button>
-                    <button class="toggle-btn" id="btn-time" onclick="App.setMode('time')">Temps (min)</button>
-                    <button class="toggle-btn bike-toggle" id="btn-bike" onclick="App.toggleBike()">Mode VAE</button>
+                    <button class="toggle-btn active" id="btn-dist" onclick="App.setMode('distance')">Distance</button>
+                    <button class="toggle-btn" id="btn-time" onclick="App.setMode('time')">Temps</button>
+                    <button class="toggle-btn bike-toggle" id="btn-bike" onclick="App.toggleBike()">VAE</button>
                 </div>
                 <div class="chart-container">
                     <canvas id="mainChart"></canvas>
@@ -218,11 +256,23 @@
             </div>
         </div>
 
-        <div id="map-container"></div>
+        <div class="map-wrapper">
+            <div class="layer-controls">
+                <label class="layer-item">
+                    <input type="checkbox" checked onchange="App.toggleLayer('heatmap', this.checked)"> Heatmap Passages
+                </label>
+                <label class="layer-item">
+                    <input type="checkbox" checked onchange="App.toggleLayer('lines', this.checked)"> Tracés Routes
+                </label>
+                <label class="layer-item">
+                    <input type="checkbox" checked onchange="App.toggleLayer('points', this.checked)"> Points Arrivée/Départ
+                </label>
+            </div>
+            <div id="map-container"></div>
+        </div>
     </main>
 
     <script>
-        // URL MISE À JOUR SELON VOTRE DERNIER MESSAGE
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxNrmW4mTLR6O1GUIdmxFkbA6iQ7h3aNxs2gdOrMPfbxleVQqi8Oslq9Disgk3h2ZnKyA/exec";
 
         const App = {
@@ -231,6 +281,7 @@
                 bikeEnabled: false,
                 rawData: [],
                 mapLayers: { points: null, lines: null },
+                visibility: { heatmap: true, lines: true, points: true },
                 chart: null
             },
 
@@ -253,11 +304,11 @@
                 const city = document.getElementById('input-city').value.trim();
 
                 if (!site || !city) {
-                    alert("Veuillez saisir une entreprise et une ville.");
+                    alert("Veuillez saisir le nom de l'entreprise et la ville.");
                     return;
                 }
 
-                this.showLoader(true, "Lecture de la base Sheets...");
+                this.showLoader(true, `Récupération des données...`);
                 this.log(`Recherche : ${site} à ${city}`);
 
                 try {
@@ -269,54 +320,43 @@
                         throw new Error(result.message || "Aucune donnée trouvée.");
                     }
 
-                    this.log("Données JSON reçues.");
+                    this.log("Données reçues.");
                     this.processData(result.data);
 
                 } catch (err) {
-                    this.log(`Erreur critique : ${err.message}`, 'error');
+                    this.log(`Erreur : ${err.message}`, 'error');
                 } finally {
                     this.showLoader(false);
                 }
             },
 
-            processData(row) {
-                if (!row) {
-                    this.log("Erreur : L'objet 'data' est vide.", "error");
-                    return;
-                }
-
-                this.log("Décodage des couches géographiques...");
+            processData(data) {
+                this.log("Préparation de la carte...");
                 
                 const parseGeo = (input) => {
+                    if (!input) return null;
                     try {
-                        let data = typeof input === 'string' ? JSON.parse(input) : input;
-                        // Si c'est un tableau de 1 élément (comme dans votre exemple), on extrait l'objet
-                        if (Array.isArray(data)) return data[0];
-                        return data;
-                    } catch (e) {
-                        this.log("Échec parsing JSON d'une colonne carto", "error");
-                        return null;
-                    }
+                        let parsed = typeof input === 'string' ? JSON.parse(input) : input;
+                        return Array.isArray(parsed) ? parsed[0] : parsed;
+                    } catch (e) { return null; }
                 };
 
-                this.state.mapLayers.points = parseGeo(row.field3);
-                this.state.mapLayers.lines = parseGeo(row.field4);
+                this.state.mapLayers.points = parseGeo(data.field3);
+                this.state.mapLayers.lines = parseGeo(data.field4);
 
-                if (!this.state.mapLayers.points || !this.state.mapLayers.lines) {
-                    this.log("Attention : Certaines couches carto sont invalides.", "error");
+                // CSV Parsing
+                if (data.field5) {
+                    Papa.parse(data.field5, {
+                        header: true,
+                        dynamicTyping: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            this.state.rawData = results.data;
+                            this.log(`${results.data.length} entrées CSV analysées.`);
+                            this.renderAll();
+                        }
+                    });
                 }
-
-                this.log("Traitement du CSV d'analyse...");
-                Papa.parse(row.field5, {
-                    header: true,
-                    dynamicTyping: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        this.state.rawData = results.data;
-                        this.log(`${results.data.length} lignes de données traitées.`);
-                        this.renderAll();
-                    }
-                });
             },
 
             renderAll() {
@@ -335,6 +375,11 @@
                 this.state.bikeEnabled = !this.state.bikeEnabled;
                 document.getElementById('btn-bike').classList.toggle('active', this.state.bikeEnabled);
                 this.updateChart();
+            },
+
+            toggleLayer(layerId, isVisible) {
+                this.state.visibility[layerId] = isVisible;
+                this.renderMap();
             },
 
             updateChart() {
@@ -372,7 +417,6 @@
 
                 const ctx = document.getElementById('mainChart').getContext('2d');
                 if (this.state.chart) this.state.chart.destroy();
-                
                 this.state.chart = new Chart(ctx, {
                     type: 'bar',
                     data: {
@@ -387,50 +431,62 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+                        scales: { y: { beginAtZero: true } }
                     }
                 });
             },
 
             renderMap() {
                 if (!this.state.mapLayers.lines) return;
-                this.log("Mise à jour de Deck.gl...");
+
+                const allTrajectoryPoints = [];
+                this.state.mapLayers.lines.features.forEach(f => {
+                    if (f.geometry && f.geometry.type === "LineString") {
+                        f.geometry.coordinates.forEach(coord => {
+                            allTrajectoryPoints.push({ coords: coord });
+                        });
+                    }
+                });
 
                 const layers = [
-                    // FOND DE CARTE OSM VOYAGER (CORRECTION)
                     new deck.TileLayer({
                         id: 'base-tiles',
                         data: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                        minZoom: 0,
-                        maxZoom: 19,
-                        tileSize: 256,
+                        minZoom: 0, maxZoom: 19, tileSize: 256,
                         renderSubLayers: props => {
                             const { bbox: { west, south, east, north } } = props.tile;
                             return new deck.BitmapLayer(props, {
-                                data: null,
-                                image: props.data,
+                                data: null, image: props.data,
                                 bounds: [west, south, east, north]
                             });
                         }
                     }),
-                    // HEATMAP (Basée sur les points de départ du fichier heat)
                     new deck.HeatmapLayer({
-                        id: 'heatmap',
-                        data: this.state.mapLayers.points ? this.state.mapLayers.points.features : [],
-                        getPosition: d => d.geometry.coordinates,
-                        getWeight: 1,
-                        radiusPixels: 45,
+                        id: 'heatmap-layer',
+                        data: allTrajectoryPoints,
+                        getPosition: d => d.coords,
+                        radiusPixels: 35,
                         intensity: 1,
-                        threshold: 0.05
+                        threshold: 0.05,
+                        aggregation: 'SUM',
+                        visible: this.state.visibility.heatmap
                     }),
-                    // ROUTES GEOJSON
                     new deck.GeoJsonLayer({
                         id: 'geojson-lines',
                         data: this.state.mapLayers.lines,
                         stroked: true,
-                        lineWidthMinPixels: 2,
-                        getLineColor: [79, 172, 254, 180],
-                        pickable: true
+                        lineWidthMinPixels: 1.5,
+                        getLineColor: [30, 41, 59, 120],
+                        pickable: true,
+                        visible: this.state.visibility.lines
+                    }),
+                    new deck.GeoJsonLayer({
+                        id: 'geojson-points',
+                        data: this.state.mapLayers.points,
+                        getFillColor: d => d.properties.type === 'arrivee' ? [239, 68, 68] : [34, 197, 94],
+                        getPointRadius: 25,
+                        pointRadiusMinPixels: 4,
+                        visible: this.state.visibility.points
                     })
                 ];
 
@@ -438,7 +494,7 @@
                     this.deckgl = new deck.DeckGL({
                         container: 'map-container',
                         initialViewState: {
-                            longitude: -0.57, latitude: 44.83, // Bordeaux par défaut
+                            longitude: -0.57, latitude: 44.83,
                             zoom: 11, pitch: 0, bearing: 0
                         },
                         controller: true,
@@ -448,13 +504,12 @@
                     this.deckgl.setProps({ layers: layers });
                 }
 
-                // Auto-center sur le premier point
-                if (this.state.mapLayers.points?.features?.length > 0) {
-                    const center = this.state.mapLayers.points.features[0].geometry.coordinates;
+                if (allTrajectoryPoints.length > 0) {
+                    const center = allTrajectoryPoints[0].coords;
                     this.deckgl.setProps({
                         initialViewState: {
                             longitude: center[0], latitude: center[1],
-                            zoom: 11, transitionDuration: 800
+                            zoom: 11, transitionDuration: 1000
                         }
                     });
                 }
