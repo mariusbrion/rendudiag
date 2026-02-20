@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analyseur de Mobilité - Dashboard</title>
+    <title>Analyseur de Mobilité - Agrégation Territoriale</title>
 
-    <!-- Bibliothèques distantes -->
     <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
     <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
@@ -14,15 +13,15 @@
 
     <style>
         :root {
-            --primary: #4facfe;
-            --secondary: #00f2fe;
-            --bg: #f8fafc;
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --bg: #f1f5f9;
             --card-bg: #ffffff;
-            --text: #1e293b;
+            --text: #0f172a;
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background-color: var(--bg);
             color: var(--text);
             margin: 0;
@@ -33,49 +32,50 @@
         }
 
         header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            padding: 1rem 1.2rem;
-            color: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background: #ffffff;
+            padding: 0.8rem 1.5rem;
+            color: var(--text);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             z-index: 10;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .search-bar {
             display: flex;
-            gap: 10px;
-            max-width: 900px;
+            gap: 12px;
+            max-width: 800px;
             margin: 0.5rem auto 0;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 8px;
+            background: #f8fafc;
+            padding: 6px;
             border-radius: 12px;
-            backdrop-filter: blur(10px);
+            border: 1px solid #e2e8f0;
         }
 
         input {
             flex: 1;
-            padding: 10px 15px;
+            padding: 12px 16px;
             border-radius: 8px;
-            border: none;
+            border: 1px solid #cbd5e1;
             outline: none;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
         }
 
         button.btn-load {
-            background: #1e293b;
+            background: var(--primary);
             color: white;
             border: none;
-            padding: 10px 25px;
+            padding: 10px 24px;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.2s;
         }
 
-        button.btn-load:hover { background: #334155; transform: translateY(-1px); }
+        button.btn-load:hover { background: #4f46e5; }
 
         main {
             display: grid;
-            grid-template-columns: 420px 1fr;
+            grid-template-columns: 400px 1fr;
             flex: 1;
             overflow: hidden;
         }
@@ -92,24 +92,33 @@
 
         .card {
             background: white;
-            border-radius: 15px;
-            padding: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-radius: 12px;
+            padding: 16px;
             border: 1px solid #f1f5f9;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            letter-spacing: 0.05em;
         }
 
         .controls {
             display: flex;
             gap: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
         }
 
         .toggle-btn {
             flex: 1;
             padding: 8px;
-            border-radius: 20px;
+            border-radius: 8px;
             border: 1px solid #e2e8f0;
-            background: white;
+            background: #f8fafc;
             cursor: pointer;
             font-size: 0.75rem;
             font-weight: 600;
@@ -122,125 +131,129 @@
             border-color: var(--primary);
         }
 
-        .bike-toggle {
-            background: #f0fdf4;
-            color: #16a34a;
-            border: 1px solid #bbf7d0;
-        }
-
-        .bike-toggle.active { background: #22c55e; color: white; }
-
-        .chart-container { height: 250px; position: relative; }
+        .chart-container { height: 220px; }
 
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            gap: 10px;
         }
 
         .stat-item {
-            text-align: center;
+            text-align: left;
             padding: 12px;
             background: #f8fafc;
-            border-radius: 10px;
+            border-radius: 8px;
+            border: 1px solid #f1f5f9;
         }
 
-        .stat-val { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
-        .stat-lab { font-size: 0.65rem; color: #64748b; text-transform: uppercase; }
+        .stat-val { font-size: 1.25rem; font-weight: 800; color: var(--primary); }
+        .stat-lab { font-size: 0.7rem; color: #64748b; margin-top: 4px; }
 
-        /* Map Controls Overlay */
+        .site-list {
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            color: #475569;
+            border: 1px solid #f1f5f9;
+            border-radius: 8px;
+            padding: 8px;
+        }
+
+        .site-tag {
+            display: inline-block;
+            background: #e0e7ff;
+            color: #4338ca;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 2px;
+            font-size: 0.7rem;
+        }
+
         .map-wrapper {
             position: relative;
             width: 100%;
             height: 100%;
         }
 
-        #map-container {
-            width: 100%;
-            height: 100%;
-            background-color: #f0f0f0;
-        }
-
-        .layer-controls {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: white;
-            padding: 12px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .layer-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #475569;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .layer-item input {
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
-        }
+        #map-container { width: 100%; height: 100%; background: #e2e8f0; }
 
         .loading-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(4px);
             display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
         }
 
         .spinner {
-            width: 40px; height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--primary);
+            width: 48px; height: 48px;
+            border: 5px solid #e2e8f0;
+            border-top: 5px solid var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        #tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
 
+    <div id="tooltip"></div>
     <div class="loading-overlay" id="global-loader">
         <div class="spinner"></div>
-        <div id="loader-msg">Chargement...</div>
+        <div id="loader-msg" style="font-weight: 600; color: var(--primary)">Agrégation des données en cours...</div>
     </div>
 
     <header>
-        <div style="text-align:center;">
-            <h1 style="margin:0; font-size: 1.2rem;">📊 Analyseur de Mobilité</h1>
-        </div>
         <div class="search-bar">
-            <input type="text" id="input-site" placeholder="Entreprise (Ex: Monoprix)" />
-            <input type="text" id="input-city" placeholder="Ville (Ex: Bordeaux)" />
-            <button class="btn-load" onclick="App.initFetch()">Charger</button>
+            <input type="text" id="input-city" placeholder="Entrez une ville (ex: Bordeaux, Lyon...)" onkeypress="if(event.key==='Enter') App.fetchByCity()" />
+            <button class="btn-load" onclick="App.fetchByCity()">Analyser le Territoire</button>
         </div>
     </header>
 
     <main>
         <div class="side-panel">
             <div class="card">
+                <div class="card-title">Résumé du Territoire</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-val" id="stat-count-sites">0</div>
+                        <div class="stat-lab">Entreprises</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-val" id="stat-count-total">0</div>
+                        <div class="stat-lab">Salariés total</div>
+                    </div>
+                </div>
+                <div class="site-list" id="site-list-container">
+                    <i>Saisissez une ville pour voir les sites...</i>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Profil de Mobilité Agrégé</div>
                 <div class="controls">
                     <button class="toggle-btn active" id="btn-dist" onclick="App.setMode('distance')">Distance</button>
-                    <button class="toggle-btn" id="btn-time" onclick="App.setMode('time')">Temps</button>
-                    <button class="toggle-btn bike-toggle" id="btn-bike" onclick="App.toggleBike()">VAE</button>
+                    <button class="toggle-btn" id="btn-time" onclick="App.setMode('time')">Temps (Voiture)</button>
                 </div>
                 <div class="chart-container">
                     <canvas id="mainChart"></canvas>
@@ -248,120 +261,142 @@
             </div>
 
             <div class="card">
-                <div class="stats-grid" id="stats-grid"></div>
+                <div class="card-title">Indicateurs de Proximité</div>
+                <div class="stats-grid" id="proximity-grid">
+                    <div class="stat-item">
+                        <div class="stat-val" id="stat-prox-2km">0</div>
+                        <div class="stat-lab">Moins de 2km</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-val" id="stat-prox-5km">0</div>
+                        <div class="stat-lab">Moins de 5km</div>
+                    </div>
+                </div>
             </div>
 
-            <div id="console-logs" style="font-size: 0.7rem; font-family: monospace; color: #64748b; padding: 10px; border-top: 1px solid #f1f5f9; max-height: 200px; overflow-y: auto; background: #fdfdfd; border-radius: 8px;">
-                > Prêt pour l'analyse...
+            <div id="console-logs" style="font-size: 0.7rem; font-family: monospace; color: #64748b; padding: 10px; max-height: 100px; overflow-y: auto;">
+                > Prêt pour l'agrégation territoriale.
             </div>
         </div>
 
         <div class="map-wrapper">
-            <div class="layer-controls">
-                <label class="layer-item">
-                    <input type="checkbox" checked onchange="App.toggleLayer('heatmap', this.checked)"> Heatmap Passages
-                </label>
-                <label class="layer-item">
-                    <input type="checkbox" checked onchange="App.toggleLayer('lines', this.checked)"> Tracés Routes
-                </label>
-                <label class="layer-item">
-                    <input type="checkbox" checked onchange="App.toggleLayer('points', this.checked)"> Points Arrivée/Départ
-                </label>
-            </div>
             <div id="map-container"></div>
         </div>
     </main>
 
     <script>
+        // L'URL de votre Apps Script qui doit maintenant retourner tous les CSV pour une ville donnée
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxNrmW4mTLR6O1GUIdmxFkbA6iQ7h3aNxs2gdOrMPfbxleVQqi8Oslq9Disgk3h2ZnKyA/exec";
 
         const App = {
             state: {
                 mode: 'distance',
-                bikeEnabled: false,
-                rawData: [],
-                mapLayers: { points: null, lines: null },
-                visibility: { heatmap: true, lines: true, points: true },
-                chart: null
+                rawData: [], // Contiendra la fusion de tous les CSV
+                sites: [],
+                cityBoundary: null,
+                cityCenter: [-0.579, 44.837],
+                chart: null,
+                deck: null
             },
 
-            log(msg, type = 'info') {
+            log(msg) {
                 const logs = document.getElementById('console-logs');
-                const time = new Date().toLocaleTimeString();
-                logs.innerHTML += `<br><span style="color: ${type === 'error' ? '#ef4444' : '#64748b'}">[${time}] ${msg}</span>`;
+                logs.innerHTML += `<br>> ${msg}`;
                 logs.scrollTop = logs.scrollHeight;
-                console.log(`[${type.toUpperCase()}] ${msg}`);
             },
 
-            showLoader(show, msg = "Chargement...") {
+            showLoader(show, msg) {
                 const loader = document.getElementById('global-loader');
-                document.getElementById('loader-msg').innerText = msg;
+                if(msg) document.getElementById('loader-msg').innerText = msg;
                 loader.style.display = show ? 'flex' : 'none';
             },
 
-            async initFetch() {
-                const site = document.getElementById('input-site').value.trim();
+            async fetchByCity() {
                 const city = document.getElementById('input-city').value.trim();
+                if (!city) return;
 
-                if (!site || !city) {
-                    alert("Veuillez saisir le nom de l'entreprise et la ville.");
-                    return;
-                }
-
-                this.showLoader(true, `Récupération des données...`);
-                this.log(`Recherche : ${site} à ${city}`);
+                this.showLoader(true, `Recherche des entreprises à ${city}...`);
+                this.log(`Action : Agrégation pour ${city}`);
 
                 try {
-                    const fetchUrl = `${SCRIPT_URL}?site=${encodeURIComponent(site)}&city=${encodeURIComponent(city)}`;
-                    const response = await fetch(fetchUrl);
+                    // 1. Récupérer le contour de la ville via OSM (Nominatim)
+                    await this.getCityBoundary(city);
+
+                    // 2. Récupérer les données CSV via Apps Script
+                    // On suppose que le script retourne un JSON : { status: 'ok', files: ["csv_content_1", "csv_content_2"] }
+                    const response = await fetch(`${SCRIPT_URL}?city=${encodeURIComponent(city)}`);
                     const result = await response.json();
 
-                    if (!result || result.status === 'error') {
-                        throw new Error(result.message || "Aucune donnée trouvée.");
+                    if (result.status === 'error' || !result.files || result.files.length === 0) {
+                        throw new Error("Aucune donnée trouvée pour cette ville.");
                     }
 
-                    this.log("Données reçues.");
-                    this.processData(result.data);
+                    this.processAggregatedData(result.files);
 
                 } catch (err) {
-                    this.log(`Erreur : ${err.message}`, 'error');
+                    this.log(`Erreur : ${err.message}`);
+                    alert(err.message);
                 } finally {
                     this.showLoader(false);
                 }
             },
 
-            processData(data) {
-                this.log("Préparation de la carte...");
-                
-                const parseGeo = (input) => {
-                    if (!input) return null;
-                    try {
-                        let parsed = typeof input === 'string' ? JSON.parse(input) : input;
-                        return Array.isArray(parsed) ? parsed[0] : parsed;
-                    } catch (e) { return null; }
-                };
+            async getCityBoundary(city) {
+                try {
+                    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=geojson&q=${encodeURIComponent(city)}&polygon_geojson=1&limit=1`);
+                    const data = await resp.json();
+                    if (data.features && data.features.length > 0) {
+                        this.state.cityBoundary = data.features[0];
+                        const coords = data.features[0].geometry.coordinates;
+                        // On centre sur le premier point trouvé
+                        let center;
+                        if(data.features[0].geometry.type === "Polygon") center = coords[0][0];
+                        else if(data.features[0].geometry.type === "MultiPolygon") center = coords[0][0][0];
+                        
+                        if(center) this.state.cityCenter = center;
+                        this.log(`Contour OSM récupéré pour ${city}`);
+                    }
+                } catch (e) {
+                    this.log("Impossible de récupérer le contour de la ville.");
+                }
+            },
 
-                this.state.mapLayers.points = parseGeo(data.field3);
-                this.state.mapLayers.lines = parseGeo(data.field4);
+            processAggregatedData(csvFiles) {
+                let mergedData = [];
+                let siteNames = new Set();
 
-                // CSV Parsing
-                if (data.field5) {
-                    Papa.parse(data.field5, {
+                csvFiles.forEach((csvText, index) => {
+                    Papa.parse(csvText, {
                         header: true,
                         dynamicTyping: true,
                         skipEmptyLines: true,
                         complete: (results) => {
-                            this.state.rawData = results.data;
-                            this.log(`${results.data.length} entrées CSV analysées.`);
-                            this.renderAll();
+                            results.data.forEach(row => {
+                                // On attend les colonnes : site, distance_km, duration_minutes, etc.
+                                if(row.site) siteNames.add(row.site);
+                                mergedData.push(row);
+                            });
                         }
                     });
-                }
+                });
+
+                this.state.rawData = mergedData;
+                this.state.sites = Array.from(siteNames);
+                
+                this.log(`${mergedData.length} lignes agrégées depuis ${csvFiles.length} fichiers.`);
+                this.updateUI();
+                this.renderMap();
             },
 
-            renderAll() {
+            updateUI() {
+                // Update Stats
+                document.getElementById('stat-count-sites').innerText = this.state.sites.length;
+                document.getElementById('stat-count-total').innerText = this.state.rawData.length;
+                
+                const listContainer = document.getElementById('site-list-container');
+                listContainer.innerHTML = this.state.sites.map(s => `<span class="site-tag">${s}</span>`).join('');
+
                 this.updateChart();
-                this.renderMap();
             },
 
             setMode(m) {
@@ -371,86 +406,56 @@
                 this.updateChart();
             },
 
-            toggleBike() {
-                this.state.bikeEnabled = !this.state.bikeEnabled;
-                document.getElementById('btn-bike').classList.toggle('active', this.state.bikeEnabled);
-                this.updateChart();
-            },
-
-            toggleLayer(layerId, isVisible) {
-                this.state.visibility[layerId] = isVisible;
-                this.renderMap();
-            },
-
             updateChart() {
-                const bins = this.state.mode === 'distance' 
+                const isDist = this.state.mode === 'distance';
+                const bins = isDist 
                     ? { '0-2km': 0, '2-5km': 0, '5-10km': 0, '10km+': 0 }
-                    : { '0-10m': 0, '10-15m': 0, '15-20m': 0, '20m+': 0 };
+                    : { '0-10m': 0, '10-20m': 0, '20-30m': 0, '30m+': 0 };
 
                 this.state.rawData.forEach(d => {
-                    if (this.state.mode === 'distance') {
-                        const val = d.distance_km;
+                    const val = isDist ? d.distance_km : d.duration_minutes;
+                    if (isDist) {
                         if (val <= 2) bins['0-2km']++;
                         else if (val <= 5) bins['2-5km']++;
                         else if (val <= 10) bins['5-10km']++;
                         else bins['10km+']++;
                     } else {
-                        let val = d.duration_minutes;
-                        if (this.state.bikeEnabled) val *= 0.75;
                         if (val <= 10) bins['0-10m']++;
-                        else if (val <= 15) bins['10-15m']++;
-                        else if (val <= 20) bins['15-20m']++;
-                        else bins['20m+']++;
+                        else if (val <= 20) bins['10-20m']++;
+                        else if (val <= 30) bins['20-30m']++;
+                        else bins['30m+']++;
                     }
                 });
 
-                const labels = Object.keys(bins);
-                const values = Object.values(bins);
-
-                const grid = document.getElementById('stats-grid');
-                grid.innerHTML = labels.map((l, i) => `
-                    <div class="stat-item">
-                        <div class="stat-val">${values[i]}</div>
-                        <div class="stat-lab">${l}</div>
-                    </div>
-                `).join('');
+                document.getElementById('stat-prox-2km').innerText = bins['0-2km'] || bins['0-10m'];
+                document.getElementById('stat-prox-5km').innerText = (bins['0-2km'] + bins['2-5km']) || (bins['0-10m'] + bins['10-20m']);
 
                 const ctx = document.getElementById('mainChart').getContext('2d');
                 if (this.state.chart) this.state.chart.destroy();
                 this.state.chart = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: labels,
+                        labels: Object.keys(bins),
                         datasets: [{
-                            data: values,
-                            backgroundColor: this.state.bikeEnabled ? '#22c55e' : '#4facfe',
-                            borderRadius: 6
+                            label: 'Nombre de personnes',
+                            data: Object.values(bins),
+                            backgroundColor: '#6366f1',
+                            borderRadius: 4
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true } }
+                        scales: { y: { beginAtZero: true, grid: { display: false } } }
                     }
                 });
             },
 
             renderMap() {
-                if (!this.state.mapLayers.lines) return;
-
-                const allTrajectoryPoints = [];
-                this.state.mapLayers.lines.features.forEach(f => {
-                    if (f.geometry && f.geometry.type === "LineString") {
-                        f.geometry.coordinates.forEach(coord => {
-                            allTrajectoryPoints.push({ coords: coord });
-                        });
-                    }
-                });
-
                 const layers = [
                     new deck.TileLayer({
-                        id: 'base-tiles',
+                        id: 'base-map',
                         data: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                         minZoom: 0, maxZoom: 19, tileSize: 256,
                         renderSubLayers: props => {
@@ -461,55 +466,40 @@
                             });
                         }
                     }),
-                    new deck.HeatmapLayer({
-                        id: 'heatmap-layer',
-                        data: allTrajectoryPoints,
-                        getPosition: d => d.coords,
-                        radiusPixels: 35,
-                        intensity: 1,
-                        threshold: 0.05,
-                        aggregation: 'SUM',
-                        visible: this.state.visibility.heatmap
-                    }),
                     new deck.GeoJsonLayer({
-                        id: 'geojson-lines',
-                        data: this.state.mapLayers.lines,
+                        id: 'city-outline',
+                        data: this.state.cityBoundary,
+                        filled: true,
                         stroked: true,
-                        lineWidthMinPixels: 1.5,
-                        getLineColor: [30, 41, 59, 120],
-                        pickable: true,
-                        visible: this.state.visibility.lines
-                    }),
-                    new deck.GeoJsonLayer({
-                        id: 'geojson-points',
-                        data: this.state.mapLayers.points,
-                        getFillColor: d => d.properties.type === 'arrivee' ? [239, 68, 68] : [34, 197, 94],
-                        getPointRadius: 25,
-                        pointRadiusMinPixels: 4,
-                        visible: this.state.visibility.points
+                        getFillColor: [99, 102, 241, 40],
+                        getLineColor: [99, 102, 241, 200],
+                        getLineWidth: 2,
+                        lineWidthUnits: 'pixels'
                     })
                 ];
 
-                if (!this.deckgl) {
-                    this.deckgl = new deck.DeckGL({
+                if (!this.state.deck) {
+                    this.state.deck = new deck.DeckGL({
                         container: 'map-container',
                         initialViewState: {
-                            longitude: -0.57, latitude: 44.83,
-                            zoom: 11, pitch: 0, bearing: 0
+                            longitude: this.state.cityCenter[0],
+                            latitude: this.state.cityCenter[1],
+                            zoom: 12,
+                            pitch: 0,
+                            bearing: 0
                         },
                         controller: true,
                         layers: layers
                     });
                 } else {
-                    this.deckgl.setProps({ layers: layers });
-                }
-
-                if (allTrajectoryPoints.length > 0) {
-                    const center = allTrajectoryPoints[0].coords;
-                    this.deckgl.setProps({
+                    this.state.deck.setProps({
+                        layers: layers,
                         initialViewState: {
-                            longitude: center[0], latitude: center[1],
-                            zoom: 11, transitionDuration: 1000
+                            longitude: this.state.cityCenter[0],
+                            latitude: this.state.cityCenter[1],
+                            zoom: 12,
+                            transitionDuration: 1000,
+                            transitionInterpolator: new deck.FlyToInterpolator()
                         }
                     });
                 }
@@ -517,7 +507,7 @@
         };
 
         window.addEventListener('resize', () => {
-            if (App.deckgl) App.deckgl.setProps({ width: '100%', height: '100%' });
+            if (App.state.deck) App.state.deck.setProps({ width: '100%', height: '100%' });
         });
     </script>
 </body>
