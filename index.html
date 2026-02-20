@@ -14,7 +14,6 @@
     <style>
         :root {
             --primary: #6366f1;
-            --secondary: #a855f7;
             --bg: #f1f5f9;
             --card-bg: #ffffff;
             --text: #0f172a;
@@ -202,19 +201,16 @@
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        .layer-toggle {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: white;
+        #console-logs {
+            font-size: 0.7rem;
+            font-family: monospace;
+            color: #64748b;
             padding: 10px;
+            max-height: 180px;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #e2e8f0;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            font-size: 0.75rem;
         }
     </style>
 </head>
@@ -222,37 +218,37 @@
 
     <div class="loading-overlay" id="global-loader">
         <div class="spinner"></div>
-        <div id="loader-msg" style="font-weight: 600; color: var(--primary)">Agrégation des données en cours...</div>
+        <div id="loader-msg" style="font-weight: 600; color: var(--primary)">Traitement...</div>
     </div>
 
     <header>
         <div class="search-bar">
-            <input type="text" id="input-city" placeholder="Rechercher une ville (ex: Bordeaux, Marseille...)" onkeypress="if(event.key==='Enter') App.fetchByCity()" />
-            <button class="btn-load" onclick="App.fetchByCity()">Analyser</button>
+            <input type="text" id="input-city" placeholder="Rechercher une ville (ex: Bordeaux...)" onkeypress="if(event.key==='Enter') App.fetchByCity()" />
+            <button class="btn-load" onclick="App.fetchByCity()">Analyser Ville</button>
         </div>
     </header>
 
     <main>
         <div class="side-panel">
             <div class="card">
-                <div class="card-title">Résumé Territoire</div>
+                <div class="card-title">Résumé Ville</div>
                 <div class="stats-grid">
                     <div class="stat-item">
                         <div class="stat-val" id="stat-count-sites">0</div>
-                        <div class="stat-lab">Sites trouvés</div>
+                        <div class="stat-lab">Entreprises</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-val" id="stat-count-total">0</div>
-                        <div class="stat-lab">Données cumulées</div>
+                        <div class="stat-lab">Employés cumulés</div>
                     </div>
                 </div>
                 <div class="site-list" id="site-list-container">
-                    <i>Saisissez une ville pour agréger les sites...</i>
+                    <i>Saisissez une ville...</i>
                 </div>
             </div>
 
             <div class="card">
-                <div class="card-title">Mobilité Territoriale</div>
+                <div class="card-title">Profil Mobilité</div>
                 <div class="controls">
                     <button class="toggle-btn active" id="btn-dist" onclick="App.setMode('distance')">Distance</button>
                     <button class="toggle-btn" id="btn-time" onclick="App.setMode('time')">Temps</button>
@@ -263,28 +259,25 @@
             </div>
 
             <div class="card">
-                <div class="card-title">Analyse Proximité</div>
+                <div class="card-title">Proximité</div>
                 <div class="stats-grid">
                     <div class="stat-item">
                         <div class="stat-val" id="stat-prox-2km">0</div>
-                        <div class="stat-lab">Salariés à -2km</div>
+                        <div class="stat-lab">- de 2km</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-val" id="stat-prox-5km">0</div>
-                        <div class="stat-lab">Salariés à -5km</div>
+                        <div class="stat-lab">- de 5km</div>
                     </div>
                 </div>
             </div>
 
-            <div id="console-logs" style="font-size: 0.7rem; font-family: monospace; color: #64748b; padding: 10px; max-height: 150px; overflow-y: auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;">
-                > Système de débogage prêt.
+            <div id="console-logs">
+                > Prêt pour l'agrégation CSV.
             </div>
         </div>
 
         <div class="map-wrapper">
-            <div class="layer-toggle">
-                <label><input type="checkbox" checked onchange="App.toggleLayer('boundary', this.checked)"> Contour Ville (OSM)</label>
-            </div>
             <div id="map-container"></div>
         </div>
     </main>
@@ -300,8 +293,7 @@
                 cityBoundary: null,
                 cityCenter: [-0.579, 44.837],
                 chart: null,
-                deck: null,
-                visibility: { boundary: true }
+                deck: null
             },
 
             log(msg, type = 'info') {
@@ -322,37 +314,32 @@
                 const cityInput = document.getElementById('input-city').value.trim();
                 if (!cityInput) return;
 
-                this.showLoader(true, `Interrogation de la base pour ${cityInput}...`);
-                this.log(`Début de recherche pour : "${cityInput}"`, 'debug');
+                this.showLoader(true, `Agrégation pour ${cityInput}...`);
+                this.log(`Action : Recherche de la ville "${cityInput}"`, 'debug');
 
                 try {
-                    // 1. Récupération Contour Ville (Optionnel, n'empêche pas le fonctionnement)
+                    // OSM Boundary
                     this.getCityBoundary(cityInput);
 
-                    // 2. Fetch Aggregated Data
+                    // Fetch CSVs
                     const targetUrl = `${SCRIPT_URL}?city=${encodeURIComponent(cityInput)}`;
-                    this.log(`Fetch URL : ${targetUrl}`, 'debug');
+                    this.log(`Requête vers Apps Script : ${targetUrl}`, 'debug');
 
                     const response = await fetch(targetUrl);
                     const result = await response.json();
 
-                    this.log(`Réponse reçue : ${JSON.stringify(result).substring(0, 100)}...`, 'debug');
+                    this.log(`Réponse brute : ${JSON.stringify(result).substring(0, 150)}...`, 'debug');
 
-                    // Vérification flexible (status ou result selon le script Google)
-                    const status = result.status || result.result;
-                    const files = result.files || (result.data ? [result.data] : []);
-
-                    if (status !== 'ok' && status !== 'success') {
-                        this.log(`Le script a renvoyé une erreur : ${result.message}`, 'error');
-                        throw new Error(result.message || "Erreur serveur");
+                    if (result.status !== 'ok' && result.result !== 'success') {
+                        throw new Error(result.message || "Erreur de réponse serveur");
                     }
 
-                    if (!files || files.length === 0) {
-                        this.log(`Tableau "files" vide pour la ville : ${cityInput}`, 'error');
-                        throw new Error("Aucune donnée trouvée pour cette ville.");
+                    const files = result.files || [];
+                    if (files.length === 0) {
+                        throw new Error(`Aucune entreprise trouvée pour la ville : ${cityInput}`);
                     }
 
-                    this.log(`${files.length} fichiers CSV trouvés.`, 'debug');
+                    this.log(`${files.length} entreprise(s) détectée(s).`, 'debug');
                     this.processAggregatedData(files);
 
                 } catch (err) {
@@ -371,9 +358,9 @@
                         const geom = data.features[0].geometry;
                         const center = geom.type === "Polygon" ? geom.coordinates[0][0] : geom.coordinates[0][0][0];
                         this.state.cityCenter = center;
-                        this.log(`Contour OSM chargé pour ${city}`, 'info');
+                        this.log(`Contour OSM récupéré.`, 'debug');
                     }
-                } catch (e) { this.log("Erreur de contour OSM (non bloquant).", 'info'); }
+                } catch (e) { this.log("OSM non disponible.", 'debug'); }
             },
 
             processAggregatedData(files) {
@@ -386,7 +373,7 @@
                     siteNames.add(siteName);
 
                     if (!csvText) {
-                        this.log(`Attention : Le site "${siteName}" n'a pas de contenu CSV.`, 'error');
+                        this.log(`Site "${siteName}" : CSV vide.`, 'error');
                         return;
                     }
 
@@ -395,23 +382,24 @@
                         dynamicTyping: true,
                         skipEmptyLines: true,
                         complete: (results) => {
-                            this.log(`Site "${siteName}" : ${results.data.length} lignes extraites.`, 'debug');
+                            this.log(`Analyse ${siteName} : ${results.data.length} lignes.`, 'debug');
                             results.data.forEach(row => {
                                 row.site = siteName;
-                                // Normalisation duree_min -> duration_minutes
+                                // Normalisation : duree_min -> duration_minutes
                                 if (row.duree_min !== undefined) row.duration_minutes = row.duree_min;
                                 mergedData.push(row);
                             });
+                            
+                            // On attend que le dernier fichier soit parsé pour mettre à jour l'UI
+                            if(index === files.length - 1) {
+                                this.state.rawData = mergedData;
+                                this.state.sites = Array.from(siteNames);
+                                this.updateUI();
+                                this.renderMap();
+                            }
                         }
                     });
                 });
-
-                this.state.rawData = mergedData;
-                this.state.sites = Array.from(siteNames);
-                
-                this.log(`Total : ${mergedData.length} lignes agrégées.`, 'info');
-                this.updateUI();
-                this.renderMap();
             },
 
             updateUI() {
@@ -427,11 +415,6 @@
                 document.getElementById('btn-dist').classList.toggle('active', m === 'distance');
                 document.getElementById('btn-time').classList.toggle('active', m === 'time');
                 this.updateChart();
-            },
-
-            toggleLayer(id, visible) {
-                this.state.visibility[id] = visible;
-                this.renderMap();
             },
 
             updateChart() {
@@ -482,7 +465,6 @@
                     new deck.GeoJsonLayer({
                         id: 'city-boundary',
                         data: this.state.cityBoundary,
-                        visible: this.state.visibility.boundary,
                         filled: false, stroked: true, getLineColor: [99, 102, 241], getLineWidth: 2
                     })
                 ];
