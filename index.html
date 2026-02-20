@@ -239,11 +239,11 @@
                 <div class="stats-grid">
                     <div class="stat-item">
                         <div class="stat-val" id="stat-count-sites">0</div>
-                        <div class="stat-lab">Sites</div>
+                        <div class="stat-lab">Sites trouvés</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-val" id="stat-count-total">0</div>
-                        <div class="stat-lab">Lignes CSV</div>
+                        <div class="stat-lab">Données cumulées</div>
                     </div>
                 </div>
                 <div class="site-list" id="site-list-container">
@@ -252,7 +252,7 @@
             </div>
 
             <div class="card">
-                <div class="card-title">Mobilité</div>
+                <div class="card-title">Mobilité Territoriale</div>
                 <div class="controls">
                     <button class="toggle-btn active" id="btn-dist" onclick="App.setMode('distance')">Distance</button>
                     <button class="toggle-btn" id="btn-time" onclick="App.setMode('time')">Temps</button>
@@ -263,28 +263,27 @@
             </div>
 
             <div class="card">
-                <div class="card-title">Stats de Proximité</div>
+                <div class="card-title">Analyse Proximité</div>
                 <div class="stats-grid">
                     <div class="stat-item">
                         <div class="stat-val" id="stat-prox-2km">0</div>
-                        <div class="stat-lab">Moins de 2km</div>
+                        <div class="stat-lab">Salariés à -2km</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-val" id="stat-prox-5km">0</div>
-                        <div class="stat-lab">Moins de 5km</div>
+                        <div class="stat-lab">Salariés à -5km</div>
                     </div>
                 </div>
             </div>
 
-            <div id="console-logs" style="font-size: 0.7rem; font-family: monospace; color: #64748b; padding: 10px; max-height: 100px; overflow-y: auto;">
-                > Système prêt.
+            <div id="console-logs" style="font-size: 0.7rem; font-family: monospace; color: #64748b; padding: 10px; max-height: 150px; overflow-y: auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;">
+                > Système de débogage prêt.
             </div>
         </div>
 
         <div class="map-wrapper">
             <div class="layer-toggle">
-                <label><input type="checkbox" checked onchange="App.toggleLayer('isochrones', this.checked)"> Isochrones (Buffers)</label>
-                <label><input type="checkbox" checked onchange="App.toggleLayer('boundary', this.checked)"> Contour Ville</label>
+                <label><input type="checkbox" checked onchange="App.toggleLayer('boundary', this.checked)"> Contour Ville (OSM)</label>
             </div>
             <div id="map-container"></div>
         </div>
@@ -298,18 +297,19 @@
                 mode: 'distance',
                 rawData: [], 
                 sites: [],
-                isochrones: [],
                 cityBoundary: null,
                 cityCenter: [-0.579, 44.837],
                 chart: null,
                 deck: null,
-                visibility: { isochrones: true, boundary: true }
+                visibility: { boundary: true }
             },
 
-            log(msg) {
+            log(msg, type = 'info') {
                 const logs = document.getElementById('console-logs');
-                logs.innerHTML += `<br>> ${msg}`;
+                const color = type === 'error' ? '#ef4444' : (type === 'debug' ? '#2563eb' : '#64748b');
+                logs.innerHTML += `<br><span style="color: ${color}">> ${msg}</span>`;
                 logs.scrollTop = logs.scrollHeight;
+                console.log(`[${type.toUpperCase()}] ${msg}`);
             },
 
             showLoader(show, msg) {
@@ -319,29 +319,44 @@
             },
 
             async fetchByCity() {
-                const city = document.getElementById('input-city').value.trim();
-                if (!city) return;
+                const cityInput = document.getElementById('input-city').value.trim();
+                if (!cityInput) return;
 
-                this.showLoader(true, `Recherche à ${city}...`);
-                this.log(`Recherche : ${city}`);
+                this.showLoader(true, `Interrogation de la base pour ${cityInput}...`);
+                this.log(`Début de recherche pour : "${cityInput}"`, 'debug');
 
                 try {
-                    // 1. Contour Ville
-                    await this.getCityBoundary(city);
+                    // 1. Récupération Contour Ville (Optionnel, n'empêche pas le fonctionnement)
+                    this.getCityBoundary(cityInput);
 
                     // 2. Fetch Aggregated Data
-                    const response = await fetch(`${SCRIPT_URL}?city=${encodeURIComponent(city)}`);
+                    const targetUrl = `${SCRIPT_URL}?city=${encodeURIComponent(cityInput)}`;
+                    this.log(`Fetch URL : ${targetUrl}`, 'debug');
+
+                    const response = await fetch(targetUrl);
                     const result = await response.json();
 
-                    if (result.status !== 'ok' || !result.files || result.files.length === 0) {
+                    this.log(`Réponse reçue : ${JSON.stringify(result).substring(0, 100)}...`, 'debug');
+
+                    // Vérification flexible (status ou result selon le script Google)
+                    const status = result.status || result.result;
+                    const files = result.files || (result.data ? [result.data] : []);
+
+                    if (status !== 'ok' && status !== 'success') {
+                        this.log(`Le script a renvoyé une erreur : ${result.message}`, 'error');
+                        throw new Error(result.message || "Erreur serveur");
+                    }
+
+                    if (!files || files.length === 0) {
+                        this.log(`Tableau "files" vide pour la ville : ${cityInput}`, 'error');
                         throw new Error("Aucune donnée trouvée pour cette ville.");
                     }
 
-                    this.processAggregatedData(result.files);
+                    this.log(`${files.length} fichiers CSV trouvés.`, 'debug');
+                    this.processAggregatedData(files);
 
                 } catch (err) {
-                    this.log(`Erreur : ${err.message}`);
-                    alert(err.message);
+                    this.log(`Échec : ${err.message}`, 'error');
                 } finally {
                     this.showLoader(false);
                 }
@@ -353,34 +368,37 @@
                     const data = await resp.json();
                     if (data.features && data.features.length > 0) {
                         this.state.cityBoundary = data.features[0];
-                        const center = data.features[0].geometry.type === "Polygon" ? data.features[0].geometry.coordinates[0][0] : data.features[0].geometry.coordinates[0][0][0];
+                        const geom = data.features[0].geometry;
+                        const center = geom.type === "Polygon" ? geom.coordinates[0][0] : geom.coordinates[0][0][0];
                         this.state.cityCenter = center;
+                        this.log(`Contour OSM chargé pour ${city}`, 'info');
                     }
-                } catch (e) { this.log("OSM Error."); }
+                } catch (e) { this.log("Erreur de contour OSM (non bloquant).", 'info'); }
             },
 
             processAggregatedData(files) {
                 let mergedData = [];
                 let siteNames = new Set();
-                let isoLayers = [];
 
-                files.forEach((file) => {
+                files.forEach((file, index) => {
                     const csvText = file.csv;
-                    const siteName = file.site;
-                    if(siteName) siteNames.add(siteName);
+                    const siteName = file.site || `Site ${index + 1}`;
+                    siteNames.add(siteName);
 
-                    // Collecte Isochrones si présents
-                    if(file.iso2) isoLayers.push({ geojson: this.parseGeo(file.iso2), color: [34, 197, 94, 80] });
-                    if(file.iso5) isoLayers.push({ geojson: this.parseGeo(file.iso5), color: [234, 179, 8, 80] });
-                    if(file.iso10) isoLayers.push({ geojson: this.parseGeo(file.iso10), color: [239, 68, 68, 80] });
+                    if (!csvText) {
+                        this.log(`Attention : Le site "${siteName}" n'a pas de contenu CSV.`, 'error');
+                        return;
+                    }
 
                     Papa.parse(csvText, {
                         header: true,
                         dynamicTyping: true,
                         skipEmptyLines: true,
                         complete: (results) => {
+                            this.log(`Site "${siteName}" : ${results.data.length} lignes extraites.`, 'debug');
                             results.data.forEach(row => {
                                 row.site = siteName;
+                                // Normalisation duree_min -> duration_minutes
                                 if (row.duree_min !== undefined) row.duration_minutes = row.duree_min;
                                 mergedData.push(row);
                             });
@@ -390,15 +408,10 @@
 
                 this.state.rawData = mergedData;
                 this.state.sites = Array.from(siteNames);
-                this.state.isochrones = isoLayers;
                 
-                this.log(`${mergedData.length} lignes agrégées (${files.length} sites).`);
+                this.log(`Total : ${mergedData.length} lignes agrégées.`, 'info');
                 this.updateUI();
                 this.renderMap();
-            },
-
-            parseGeo(val) {
-                try { return typeof val === 'string' ? JSON.parse(val) : val; } catch(e) { return null; }
             },
 
             updateUI() {
@@ -471,13 +484,7 @@
                         data: this.state.cityBoundary,
                         visible: this.state.visibility.boundary,
                         filled: false, stroked: true, getLineColor: [99, 102, 241], getLineWidth: 2
-                    }),
-                    ...this.state.isochrones.map((iso, i) => new deck.GeoJsonLayer({
-                        id: `iso-${i}`,
-                        data: iso.geojson,
-                        visible: this.state.visibility.isochrones,
-                        filled: true, getFillColor: iso.color, stroked: false
-                    }))
+                    })
                 ];
 
                 if (!this.state.deck) {
