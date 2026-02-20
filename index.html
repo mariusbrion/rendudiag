@@ -285,13 +285,12 @@
     </main>
 
     <script>
-        // L'URL de votre Apps Script qui doit maintenant retourner tous les CSV pour une ville donnée
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxNrmW4mTLR6O1GUIdmxFkbA6iQ7h3aNxs2gdOrMPfbxleVQqi8Oslq9Disgk3h2ZnKyA/exec";
 
         const App = {
             state: {
                 mode: 'distance',
-                rawData: [], // Contiendra la fusion de tous les CSV
+                rawData: [], 
                 sites: [],
                 cityBoundary: null,
                 cityCenter: [-0.579, 44.837],
@@ -323,7 +322,6 @@
                     await this.getCityBoundary(city);
 
                     // 2. Récupérer les données CSV via Apps Script
-                    // On suppose que le script retourne un JSON : { status: 'ok', files: ["csv_content_1", "csv_content_2"] }
                     const response = await fetch(`${SCRIPT_URL}?city=${encodeURIComponent(city)}`);
                     const result = await response.json();
 
@@ -348,7 +346,6 @@
                     if (data.features && data.features.length > 0) {
                         this.state.cityBoundary = data.features[0];
                         const coords = data.features[0].geometry.coordinates;
-                        // On centre sur le premier point trouvé
                         let center;
                         if(data.features[0].geometry.type === "Polygon") center = coords[0][0];
                         else if(data.features[0].geometry.type === "MultiPolygon") center = coords[0][0][0];
@@ -361,19 +358,29 @@
                 }
             },
 
-            processAggregatedData(csvFiles) {
+            processAggregatedData(files) {
                 let mergedData = [];
                 let siteNames = new Set();
 
-                csvFiles.forEach((csvText, index) => {
+                files.forEach((file) => {
+                    // Si file est un objet {site: '...', csv: '...'} ou une chaîne simple
+                    const csvText = typeof file === 'object' ? file.csv : file;
+                    const siteName = typeof file === 'object' ? file.site : null;
+
                     Papa.parse(csvText, {
                         header: true,
                         dynamicTyping: true,
                         skipEmptyLines: true,
                         complete: (results) => {
                             results.data.forEach(row => {
-                                // On attend les colonnes : site, distance_km, duration_minutes, etc.
-                                if(row.site) siteNames.add(row.site);
+                                // Mappage des colonnes selon votre structure : id, distance_km, duree_min
+                                // On injecte le nom du site s'il n'est pas dans le CSV mais dans l'objet parent
+                                if (siteName && !row.site) row.site = siteName;
+                                if (row.site) siteNames.add(row.site);
+                                
+                                // On normalise le nom des colonnes pour le reste de l'app
+                                if (row.duree_min !== undefined) row.duration_minutes = row.duree_min;
+                                
                                 mergedData.push(row);
                             });
                         }
@@ -383,13 +390,12 @@
                 this.state.rawData = mergedData;
                 this.state.sites = Array.from(siteNames);
                 
-                this.log(`${mergedData.length} lignes agrégées depuis ${csvFiles.length} fichiers.`);
+                this.log(`${mergedData.length} lignes agrégées depuis ${files.length} fichiers.`);
                 this.updateUI();
                 this.renderMap();
             },
 
             updateUI() {
-                // Update Stats
                 document.getElementById('stat-count-sites').innerText = this.state.sites.length;
                 document.getElementById('stat-count-total').innerText = this.state.rawData.length;
                 
@@ -413,7 +419,9 @@
                     : { '0-10m': 0, '10-20m': 0, '20-30m': 0, '30m+': 0 };
 
                 this.state.rawData.forEach(d => {
-                    const val = isDist ? d.distance_km : d.duration_minutes;
+                    const val = isDist ? d.distance_km : (d.duree_min || d.duration_minutes);
+                    if (val === undefined || val === null) return;
+
                     if (isDist) {
                         if (val <= 2) bins['0-2km']++;
                         else if (val <= 5) bins['2-5km']++;
@@ -428,7 +436,7 @@
                 });
 
                 document.getElementById('stat-prox-2km').innerText = bins['0-2km'] || bins['0-10m'];
-                document.getElementById('stat-prox-5km').innerText = (bins['0-2km'] + bins['2-5km']) || (bins['0-10m'] + bins['10-20m']);
+                document.getElementById('stat-prox-5km').innerText = (bins['0-2km'] + (bins['2-5km'] || 0)) || (bins['0-10m'] + (bins['10-20m'] || 0));
 
                 const ctx = document.getElementById('mainChart').getContext('2d');
                 if (this.state.chart) this.state.chart.destroy();
